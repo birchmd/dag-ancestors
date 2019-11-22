@@ -23,6 +23,8 @@ class DagGenerator {
       node
     }
 
+  def maxUsedIndex: Long = ids.head - 1L
+
   def nodeByHash(hash: Hash): SimpleNode = idMapping(hash)
 
   def nodeWithParents(ps: NonEmptyList[Hash]): SimpleNode = {

@@ -113,4 +113,46 @@ class SkipDagTest
       dag.relation(e, x) shouldBe Some(Dag.Relation.Descendant)
     }
   }
+
+  it should "be fast" in {
+    val rand = new scala.util.Random()
+    val dagWidth = 3
+    val dagHeight = 100
+    val dagGen = DagShapes.random(dagWidth, dagHeight)
+    val nDag = dagGen.naiveDag[cats.Id](Instances.monadErrorId)
+    val sDag = dagGen.skipDag[cats.Id](Instances.monadErrorId)
+    val maxHash = dagGen.maxUsedIndex
+
+    def compare(): (Long, Long) = {
+      val a = dagGen.nodeByHash(rand.nextLong(maxHash))
+      val b = dagGen.nodeByHash(rand.nextLong(maxHash))
+
+      val nStart = System.nanoTime()
+      val _ = nDag.relation(a, b)
+      val nEnd = System.nanoTime()
+
+      val sStart = System.nanoTime()
+      val _ = sDag.relation(a, b)
+      val sEnd = System.nanoTime()
+
+      (nEnd - nStart, sEnd - sStart)
+    }
+
+    val warmup = 10
+    val actual = 20
+
+    (0 until warmup).foreach { _ =>
+      val _ = compare()
+    }
+    val (nTotal, sTotal) = (0 until actual).foldLeft(0L -> 0L) {
+      case ((nAcc, sAcc), _) =>
+        val (nTime, sTime) = compare()
+        (nAcc + nTime, sAcc + sTime)
+    }
+
+    val nAverage = nTotal.toDouble / (actual * 1000000L) // in units of ms
+    val sAverage = sTotal.toDouble / (actual * 1000000L) // in units of ms
+    println(s"NAIVE TIME: $nAverage ms")
+    println(s"SKIP TIME: $sAverage ms")
+  }
 }
