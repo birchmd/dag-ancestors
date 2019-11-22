@@ -1,5 +1,7 @@
 package birchmd.dag
 
+import cats.data.NonEmptyList
+import cats.implicits._
 import org.scalacheck.Gen
 import org.scalatestplus.scalacheck.ScalaCheckDrivenPropertyChecks
 import org.scalatest.{FlatSpec, Matchers}
@@ -33,4 +35,82 @@ class SkipDagTest
     }
   }
 
+  "SkipDag.children" should "work correctly for a chain" in {
+    implicit val mErr = Instances.monadErrorId
+    val length = 10
+    val underlyingDag = DagShapes.chain(length + 1)
+    val dag = underlyingDag.skipDag[cats.Id]
+
+    (0L until length.toLong).foreach { hash =>
+      val node = underlyingDag.nodeByHash(hash)
+      val nextNode = underlyingDag.nodeByHash(hash + 1)
+      dag.children(node) shouldBe List(nextNode)
+    }
+  }
+
+  it should "work correctly for a fork" in {
+    implicit val mErr = Instances.monadErrorId
+    val length = 3
+    val underlyingDag = DagShapes.fork(length)
+
+    val genesis = underlyingDag.genesis()
+    val a = underlyingDag.nodeByHash(1)
+    val b = underlyingDag.nodeByHash(2)
+    val c = underlyingDag.nodeByHash(3)
+    val d = underlyingDag.nodeByHash(4)
+    val e = underlyingDag.nodeWithParents(NonEmptyList.of(c.id, d.id))
+
+    val dag = underlyingDag.skipDag[cats.Id]
+    dag.children(genesis).toSet shouldBe Set(a, b)
+    dag.children(a) shouldBe List(c)
+    dag.children(b) shouldBe List(d)
+    dag.children(c) shouldBe List(e)
+    dag.children(d) shouldBe List(e)
+  }
+
+  "SkipDag.relation" should "work correctly for a chain" in {
+    implicit val mErr = Instances.monadErrorId
+    val length = 10
+    val underlyingDag = DagShapes.chain(length + 1)
+    val dag = underlyingDag.skipDag[cats.Id]
+
+    for {
+      i <- (0L until length.toLong)
+      node = underlyingDag.nodeByHash(i)
+      _ = dag.relation(node, node) shouldBe Some(Dag.Relation.Equal)
+      j <- (i + 1).until(length.toLong)
+      futureNode = underlyingDag.nodeByHash(j)
+      _ = dag.relation(node, futureNode) shouldBe Some(Dag.Relation.Ancestor)
+      _ = dag.relation(futureNode, node) shouldBe Some(Dag.Relation.Descendant)
+    } yield ()
+  }
+
+  it should "work correctly for a fork" in {
+    implicit val mErr = Instances.monadErrorId
+    val length = 3
+    val underlyingDag = DagShapes.fork(length)
+
+    val genesis = underlyingDag.genesis()
+    val a = underlyingDag.nodeByHash(1)
+    val b = underlyingDag.nodeByHash(2)
+    val c = underlyingDag.nodeByHash(3)
+    val d = underlyingDag.nodeByHash(4)
+    val e = underlyingDag.nodeWithParents(NonEmptyList.of(c.id, d.id))
+
+    val dag = underlyingDag.skipDag[cats.Id]
+    dag.relation(genesis, genesis) shouldBe Some(Dag.Relation.Equal)
+    dag.relation(a, b) shouldBe None
+    dag.relation(b, a) shouldBe None
+    dag.relation(a, d) shouldBe None
+    dag.relation(d, a) shouldBe None
+    List(a, b, c, d, e).foreach { x =>
+      dag.relation(x, x) shouldBe Some(Dag.Relation.Equal)
+      dag.relation(genesis, x) shouldBe Some(Dag.Relation.Ancestor)
+      dag.relation(x, genesis) shouldBe Some(Dag.Relation.Descendant)
+    }
+    List(a, b, c, d).foreach { x =>
+      dag.relation(x, e) shouldBe Some(Dag.Relation.Ancestor)
+      dag.relation(e, x) shouldBe Some(Dag.Relation.Descendant)
+    }
+  }
 }
