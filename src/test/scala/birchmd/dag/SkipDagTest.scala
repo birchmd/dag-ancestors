@@ -24,4 +24,13 @@ class SkipDagTest
     }
   }
 
+  it should "return the powers in descending order" in forAll(
+    Gen.choose(1L, 5000L)
+  ) { n =>
+    val decomposition = SkipDag.decompose(n)
+    decomposition.zip(decomposition.tail).foreach {
+      case (x, y) => x should be >= y
+    }
+  }
+
 }
