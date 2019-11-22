@@ -18,6 +18,7 @@ lazy val dag = (project in file("."))
   .settings(
     libraryDependencies ++= Seq(
       "org.scalacheck" %% "scalacheck" % "1.14.1" % "test",
-      "io.monix"       %% "monix"      % "3.0.0"
+      "io.monix"       %% "monix"      % "3.0.0",
+      "org.scalatest"  %% "scalatest"  % "3.0.8" % "test"
     )
   )

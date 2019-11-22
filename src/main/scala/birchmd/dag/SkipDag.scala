@@ -10,10 +10,6 @@ class SkipDag[F[_], A, Hash](
 )(implicit monadError: cats.MonadError[F, Throwable])
     extends NaiveDag[F, A, Hash](node, hashesMapping, childrenMapping) {
 
-  private val powers =
-    (1 until 10).scanLeft(1L) { case (x, _) => x * 2L }.reverse
-  private val maxPower = powers.max
-
   override def relation(x: A, y: A): F[Option[Dag.Relation]] =
     (node.rank(x), node.rank(y)) match {
       case (rx, ry) if rx == ry =>
@@ -22,7 +18,7 @@ class SkipDag[F[_], A, Hash](
 
       case (rx, ry) if rx < ry =>
         val rankDiff = ry - rx
-        val plan = decompose(rankDiff)
+        val plan = SkipDag.decompose(rankDiff)
         val target = node.id(x)
 
         monadError
@@ -31,22 +27,12 @@ class SkipDag[F[_], A, Hash](
 
       case (rx, ry) if rx > ry =>
         val rankDiff = rx - ry
-        val plan = decompose(rankDiff)
+        val plan = SkipDag.decompose(rankDiff)
         val target = node.id(y)
 
         monadError
           .tailRecM(List(x) -> plan)(relationLoop(target)(_))
           .map(_.map(_ => Dag.Relation.descendant))
-    }
-
-  /** Write `n` as a sum of powers of 2, none any larger than maxPower */
-  @scala.annotation.tailrec
-  private def decompose(n: Long, ms: List[Long] = Nil): List[Long] =
-    if (n == 0) ms.reverse
-    else if (n > maxPower) decompose(n - maxPower, maxPower :: ms)
-    else {
-      val power = powers.find(_ <= n).get
-      decompose(n - power, power :: ms)
     }
 
   private type LoopState = (List[A], List[Long])
@@ -65,4 +51,20 @@ class SkipDag[F[_], A, Hash](
         }
   }
 
+}
+
+object SkipDag {
+  val powers = (1 until 10).scanLeft(1L) { case (x, _) => x * 2L }.reverse
+
+  /** Write `n` as a sum of powers of 2 */
+  def decompose(n: Long): List[Long] =
+    powers
+      .foldLeft(n -> List.empty[Long]) {
+        case ((m, acc), power) =>
+          val numPower = m / power
+          val remaining = m - power * numPower
+          (remaining, List.fill(numPower.toInt)(power) ::: acc)
+      }
+      ._2
+      .reverse
 }
