@@ -116,8 +116,8 @@ class SkipDagTest
 
   it should "be fast" in {
     val rand = new scala.util.Random()
-    val dagWidth = 3
-    val dagHeight = 100
+    val dagWidth = 5
+    val dagHeight = 1000
     val dagGen = DagShapes.random(dagWidth, dagHeight)
     val nDag = dagGen.naiveDag[cats.Id](Instances.monadErrorId)
     val sDag = dagGen.skipDag[cats.Id](Instances.monadErrorId)
@@ -128,12 +128,14 @@ class SkipDagTest
       val b = dagGen.nodeByHash(rand.nextLong(maxHash))
 
       val nStart = System.nanoTime()
-      val _ = nDag.relation(a, b)
+      val nResult = nDag.relation(a, b)
       val nEnd = System.nanoTime()
 
       val sStart = System.nanoTime()
-      val _ = sDag.relation(a, b)
+      val sResult = sDag.relation(a, b)
       val sEnd = System.nanoTime()
+
+      sResult shouldBe nResult
 
       (nEnd - nStart, sEnd - sStart)
     }
@@ -152,6 +154,7 @@ class SkipDagTest
 
     val nAverage = nTotal.toDouble / (actual * 1000000L) // in units of ms
     val sAverage = sTotal.toDouble / (actual * 1000000L) // in units of ms
+    sAverage should be < nAverage
     println(s"NAIVE TIME: $nAverage ms")
     println(s"SKIP TIME: $sAverage ms")
   }

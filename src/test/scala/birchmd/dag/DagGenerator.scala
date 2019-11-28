@@ -41,9 +41,9 @@ class DagGenerator {
       childrenMapping.update(p, id :: children)
     }
 
-    val _ = DagGenerator.powers.foldLeft(parents) {
+    val _ = DagGenerator.powers.foldLeft(parents.toSet) {
       case (ancestors, r) =>
-        ancestorMapping.update(id -> r, ancestors)
+        ancestorMapping.update(id -> r, ancestors.toList)
 
         ancestors.flatMap(a => ancestorMapping(a -> r))
     }
