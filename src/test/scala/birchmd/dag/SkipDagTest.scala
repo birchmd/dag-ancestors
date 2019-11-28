@@ -116,7 +116,7 @@ class SkipDagTest
 
   it should "be fast" in {
     val rand = new scala.util.Random()
-    val dagWidth = 5
+    val dagWidth = 20
     val dagHeight = 1000
     val dagGen = DagShapes.random(dagWidth, dagHeight)
     val nDag = dagGen.naiveDag[cats.Id](Instances.monadErrorId)
@@ -141,7 +141,7 @@ class SkipDagTest
     }
 
     val warmup = 10
-    val actual = 20
+    val actual = 30
 
     (0 until warmup).foreach { _ =>
       val _ = compare()

@@ -45,7 +45,7 @@ class SkipDag[F[_], A, Hash](
     case (candidates, step :: rem) =>
       candidates
         .flatTraverse(c => ancestorMapping.lookupUnsafe(node.id(c) -> step))
-        .flatMap(_.traverse(hashesMapping.lookupUnsafe))
+        .flatMap(_.distinct.traverse(hashesMapping.lookupUnsafe))
         .map { newCandidates =>
           Left(newCandidates -> rem).rightCast[Option[A]]
         }
